@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace VtNetCore.Avalonia.App.ViewModels
+﻿namespace VtNetCore.Avalonia.App.ViewModels
 {
-    public class MainWindowViewModel : ViewModelBase
+    public partial class MainWindowViewModel : ViewModelBase
     {
-        public string Greeting => "Hello World!";
+#pragma warning disable CA1822 // Mark members as static
+        public string Greeting => "Welcome to Avalonia!";
+#pragma warning restore CA1822 // Mark members as static
     }
 }
