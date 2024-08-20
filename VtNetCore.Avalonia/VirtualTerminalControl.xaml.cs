@@ -7,6 +7,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using System;
+using System.Reactive;
 using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -15,6 +16,7 @@ using System.Threading.Tasks;
 using VtNetCore.VirtualTerminal;
 using VtNetCore.VirtualTerminal.Model;
 using VtNetCore.XTermParser;
+using System.Threading;
 
 namespace VtNetCore.Avalonia
 {
@@ -142,7 +144,7 @@ namespace VtNetCore.Avalonia
                 .ObserveOn(AvaloniaScheduler.Instance)
                 .Subscribe(terminal =>
                 {
-                    if(_terminalDisposables != null)
+                    if (_terminalDisposables != null)
                     {
                         _terminalDisposables.Dispose();
                         _terminalDisposables = null;
@@ -168,12 +170,12 @@ namespace VtNetCore.Avalonia
 
                         _terminalDisposables.Add(
                             Observable.FromEventPattern<SendDataEventArgs>(terminal, nameof(terminal.SendData)).Subscribe(e => OnSendData(e.EventArgs)));
-                        
+
                         _terminalDisposables.Add(
                             Observable.FromEventPattern<TextEventArgs>(terminal, nameof(terminal.WindowTitleChanged))
                             .ObserveOn(AvaloniaScheduler.Instance)
                             .Subscribe(e => WindowTitle = e.EventArgs.Text));
-                        
+
                         terminal.StoreRawText = true;
                     }
                 });
@@ -270,16 +272,16 @@ namespace VtNetCore.Avalonia
             {
                 switch (e.Key)
                 {
-                    case Key.F10:
+                    case Avalonia.Input.Key.F10:
                         Consumer.SequenceDebugging = !Consumer.SequenceDebugging;
                         return;
 
-                    case Key.F11:
+                    case Avalonia.Input.Key.F11:
                         ViewDebugging = !ViewDebugging;
                         InvalidateVisual();
                         return;
 
-                    case Key.F12:
+                    case Avalonia.Input.Key.F12:
                         Terminal.Debugging = !Terminal.Debugging;
                         return;
                 }
@@ -354,11 +356,20 @@ namespace VtNetCore.Avalonia
                 var controlPressed = e.KeyModifiers.HasFlag(KeyModifiers.Control);
                 var shiftPressed = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
 
+#if false
                 var button =
-                    e.InputModifiers.HasFlag(InputModifiers.LeftMouseButton) ? 0 :
-                        e.InputModifiers.HasFlag(InputModifiers.RightMouseButton) ? 1 :
-                            e.InputModifiers.HasFlag(InputModifiers.MiddleMouseButton) ? 2 :
-                            3;  // No button
+            e.InputModifiers.HasFlag(InputModifiers.LeftMouseButton) ? 0 :
+                e.InputModifiers.HasFlag(InputModifiers.RightMouseButton) ? 1 :
+                    e.InputModifiers.HasFlag(InputModifiers.MiddleMouseButton) ? 2 :
+                    3;  // No button
+
+#endif
+
+                var button =
+                    e.KeyModifiers.HasFlag(InputModifiers.LeftMouseButton) ? 0 :
+                    e.KeyModifiers.HasFlag(InputModifiers.RightMouseButton) ? 1 :
+                    e.KeyModifiers.HasFlag(InputModifiers.MiddleMouseButton) ? 2 :
+                    3;  // No button
 
                 Terminal.MouseMove(position.Column, position.Row, button, controlPressed, shiftPressed);
 
@@ -371,7 +382,7 @@ namespace VtNetCore.Avalonia
 
             MouseOver = position;
 
-            if (e.InputModifiers.HasFlag(InputModifiers.LeftMouseButton))
+            if (e.KeyModifiers.HasFlag(InputModifiers.LeftMouseButton))
             {
                 TextRange newSelection;
 
@@ -412,7 +423,7 @@ namespace VtNetCore.Avalonia
                 System.Diagnostics.Debug.WriteLine("Pointer Moved " + position.ToString());
         }
 
-        protected override void OnPointerLeave(PointerEventArgs e)
+        protected override void OnPointerExited(PointerEventArgs e)
         {
             MouseOver = null;
 
@@ -431,9 +442,9 @@ namespace VtNetCore.Avalonia
 
             if (!Connected || (Connected && !Terminal.X10SendMouseXYOnButton && !Terminal.X11SendMouseXYOnButton && !Terminal.SgrMouseMode && !Terminal.CellMotionMouseTracking && !Terminal.UseAllMouseTracking))
             {
-                if (e.InputModifiers.HasFlag(InputModifiers.LeftMouseButton))
+                if (e.KeyModifiers.HasFlag(KeyModifiers.LeftMouseButton))
                     MousePressedAt = textPosition;
-                else if (e.InputModifiers.HasFlag(InputModifiers.RightMouseButton))
+                else if (e.KeyModifiers.HasFlag(InputModifiers.RightMouseButton))
                     PasteClipboard();
             }
 
@@ -443,8 +454,8 @@ namespace VtNetCore.Avalonia
                 var shiftPressed = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
 
                 var button =
-                    e.InputModifiers.HasFlag(InputModifiers.LeftMouseButton) ? 0 :
-                        e.InputModifiers.HasFlag(InputModifiers.RightMouseButton) ? 1 :
+                    e.KeyModifiers.HasFlag(InputModifiers.LeftMouseButton) ? 0 :
+                        e.KeyModifiers.HasFlag(InputModifiers.RightMouseButton) ? 1 :
                             2;  // Middle button
 
                 Terminal.MousePress(position.Column, position.Row, button, controlPressed, shiftPressed);
@@ -457,7 +468,7 @@ namespace VtNetCore.Avalonia
             var position = ToPosition(pointer);
             var textPosition = position.OffsetBy(0, ViewTop);
 
-            if (!e.InputModifiers.HasFlag(InputModifiers.LeftMouseButton))
+            if (!e.KeyModifiers.HasFlag(Avalonia.Input.InputModifiers.LeftMouseButton))
             {
                 if (Selecting)
                 {
@@ -469,7 +480,7 @@ namespace VtNetCore.Avalonia
 
                     var captured = Terminal.GetText(TextSelection.Start.Column, TextSelection.Start.Row, TextSelection.End.Column, TextSelection.End.Row);
 
-                    Application.Current.Clipboard.SetTextAsync(captured).GetAwaiter().GetResult();
+                    TopLevel.GetTopLevel(this).Clipboard.SetTextAsync(captured).GetAwaiter().GetResult();
                 }
                 else
                 {
@@ -562,7 +573,7 @@ namespace VtNetCore.Avalonia
 
         private void PaintBackgroundLayer(DrawingContext context, List<VirtualTerminal.Layout.LayoutRow> spans)
         {
-            if(spans == null)
+            if (spans == null)
             {
                 return;
             }
@@ -603,7 +614,7 @@ namespace VtNetCore.Avalonia
 
         private void PaintTextLayer(DrawingContext context, List<VirtualTerminal.Layout.LayoutRow> spans, Typeface textFormat, bool showBlink)
         {
-            if(spans == null)
+            if (spans == null)
             {
                 return;
 
@@ -637,14 +648,16 @@ namespace VtNetCore.Avalonia
 
                         var typeface = new Typeface(textFormat.FontFamily, FontStyle.Normal, textSpan.Bold ? FontWeight.Bold : FontWeight.Light);
 
-                        var textLayout = new FormattedText()
-                        {
-                            Text = textSpan.Text,
-                            Typeface = typeface,
-                            FontSize = FontSize
-                        };
+                        var textLayout = new FormattedText(
 
-                        context.DrawText(color, new Point(drawX, drawY), textLayout);
+                             textSpan.Text,
+                             Thread.CurrentThread.CurrentCulture,
+                             FlowDirection.LeftToRight,
+                             typeface,
+                            FontSize, color
+                        );
+
+                        context.DrawText(textLayout, new Point(drawX, drawY));
 
                         // TODO : Come up with a better means of identifying line weight and offset
                         double underlineOffset = dipToDpiRatio * 1.07;
@@ -705,7 +718,7 @@ namespace VtNetCore.Avalonia
         public override void Render(DrawingContext context)
         {
             var textFormat =
-                new Typeface(FontFamily, FontStyle, FontWeight);            
+                new Typeface(FontFamily, FontStyle, FontWeight);
 
             ProcessTextFormat(context, textFormat);
 
@@ -750,25 +763,31 @@ namespace VtNetCore.Avalonia
             {
                 string s = i.ToString();
                 var textLayout = new FormattedText
-                {
-                    Text = s.ToString(),
-                    Typeface = lineNumberFormat,
-                    FontSize = FontSize
-                };
+                    (
+                s.ToString(),
+                Thread.CurrentThread.CurrentUICulture,
+                FlowDirection.LeftToRight,
+                lineNumberFormat,
+                      FontSize, Brushes.Yellow
+                    )
+                ;
 
                 var y = i * CharacterHeight;
                 context.DrawLine(new Pen(Brushes.Beige), new Point(0, y), new Point(Bounds.Size.Width, y));
-                context.DrawText(Brushes.Yellow, new Point((Bounds.Size.Width - (CharacterWidth / 2 * s.Length)), y), textLayout);
+                context.DrawText(textLayout, new Point((Bounds.Size.Width - (CharacterWidth / 2 * s.Length)), y));
 
                 s = (i + 1).ToString();
 
-                textLayout = new FormattedText { Text = s.ToString(), Typeface = lineNumberFormat, FontSize = FontSize };
-                context.DrawText(Brushes.Green, new Point((Bounds.Size.Width - (CharacterWidth / 2 * (s.Length + 3))), y), textLayout);
+                textLayout = new FormattedText(s.ToString(),
+                    Thread.CurrentThread.CurrentCulture, FlowDirection.LeftToRight, lineNumberFormat, FontSize = FontSize, Brushes.Green);
+
+                context.DrawText(textLayout, new Point((Bounds.Size.Width - (CharacterWidth / 2 * (s.Length + 3))), y));
             }
 
             var bigText = Terminal.DebugText;
-            var bigTextLayout = new FormattedText { Text = bigText, Typeface = lineNumberFormat, FontSize = FontSize };
-            context.DrawText(Brushes.Yellow, new Point((Bounds.Size.Width - bigTextLayout.Bounds.Width - 100), 0), bigTextLayout);
+            var bigTextLayout = new FormattedText(bigText, Thread.CurrentThread.CurrentCulture,
+                FlowDirection.LeftToRight, lineNumberFormat, FontSize, Brushes.Yellow);
+            context.DrawText(bigTextLayout, new Point((Bounds.Size.Width - bigTextLayout.WidthIncludingTrailingWhitespace - 100), 0));
         }
 
         private IBrush GetBackgroundBrush(TerminalAttribute attribute, bool invert)
@@ -832,15 +851,17 @@ namespace VtNetCore.Avalonia
 
         private void ProcessTextFormat(DrawingContext drawingSession, Typeface format)
         {
-            var textLayout = new FormattedText
-            {
-                Text = "\u2560",
-                Typeface = format,
-                TextWrapping = TextWrapping.NoWrap,
-                FontSize = FontSize
-            };
+            var textLayout = new FormattedText(
 
-            var size = textLayout.Bounds;
+               "\u2560",
+               Thread.CurrentThread.CurrentCulture,
+                FlowDirection.LeftToRight,
+                format,
+                //TextWrapping.NoWrap,
+                FontSize, null
+            );
+
+            var size = textLayout;
 
             if (CharacterWidth != size.Width || CharacterHeight != size.Height)
             {
@@ -903,7 +924,7 @@ namespace VtNetCore.Avalonia
 
         private async void PasteClipboard()
         {
-            string text = await Application.Current.Clipboard.GetTextAsync();
+            string text = await TopLevel.GetTopLevel(this).Clipboard.GetTextAsync();
 
             if (!string.IsNullOrEmpty(text))
             {

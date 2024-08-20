@@ -5,7 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="using:VtNetCore.Avalonia.App.ViewModels"
-    xmlns:vt100="clr-namespace:VtNetCore.Avalonia;assembly=VtNetCore.Avalonia"
+    xmlns:vt100="using:VtNetCore.Avalonia"
     Title="VtNetCore.Avalonia.App"
     d:DesignHeight="450"
     d:DesignWidth="800"
