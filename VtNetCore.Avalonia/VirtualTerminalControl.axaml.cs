@@ -7,7 +7,6 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using System;
-using System.Reactive;
 using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -17,11 +16,15 @@ using VtNetCore.VirtualTerminal;
 using VtNetCore.VirtualTerminal.Model;
 using VtNetCore.XTermParser;
 using System.Threading;
+using MouseButton = Avalonia.Input.MouseButton;
+using Key = Avalonia.Input.Key;
 
 namespace VtNetCore.Avalonia
 {
-    public class VirtualTerminalControl : TemplatedControl
+    public partial class VirtualTerminalControl : TemplatedControl
     {
+        protected override Type StyleKeyOverride { get; } = typeof(VirtualTerminalControl);
+
         private CompositeDisposable _disposables;
         private CompositeDisposable _terminalDisposables;
 
@@ -272,16 +275,16 @@ namespace VtNetCore.Avalonia
             {
                 switch (e.Key)
                 {
-                    case Avalonia.Input.Key.F10:
+                    case Key.F10:
                         Consumer.SequenceDebugging = !Consumer.SequenceDebugging;
                         return;
 
-                    case Avalonia.Input.Key.F11:
+                    case Key.F11:
                         ViewDebugging = !ViewDebugging;
                         InvalidateVisual();
                         return;
 
-                    case Avalonia.Input.Key.F12:
+                    case Key.F12:
                         Terminal.Debugging = !Terminal.Debugging;
                         return;
                 }
@@ -346,10 +349,24 @@ namespace VtNetCore.Avalonia
 
         protected override void OnPointerMoved(PointerEventArgs e)
         {
+            base.OnPointerMoved(e);
+
             var pointer = e.GetPosition(this);
             var position = ToPosition(pointer);
 
+            // 获取指针的属性
+            var pointerPoint = e.GetCurrentPoint(this);
+
             var textPosition = position.OffsetBy(0, ViewTop);
+            var button = 3;
+            if (pointerPoint.Properties.IsLeftButtonPressed)
+                button = 0;
+            else if (pointerPoint.Properties.IsRightButtonPressed)
+                button = 1;
+            else if (pointerPoint.Properties.IsMiddleButtonPressed)
+                button = 2;
+            else
+                button = 3;
 
             if (Connected && (Terminal.UseAllMouseTracking || Terminal.CellMotionMouseTracking) && position.Column >= 0 && position.Row >= 0 && position.Column < Columns && position.Row < Rows)
             {
@@ -365,12 +382,6 @@ namespace VtNetCore.Avalonia
 
 #endif
 
-                var button =
-                    e.KeyModifiers.HasFlag(InputModifiers.LeftMouseButton) ? 0 :
-                    e.KeyModifiers.HasFlag(InputModifiers.RightMouseButton) ? 1 :
-                    e.KeyModifiers.HasFlag(InputModifiers.MiddleMouseButton) ? 2 :
-                    3;  // No button
-
                 Terminal.MouseMove(position.Column, position.Row, button, controlPressed, shiftPressed);
 
                 if (button == 3 && !Terminal.UseAllMouseTracking)
@@ -382,7 +393,7 @@ namespace VtNetCore.Avalonia
 
             MouseOver = position;
 
-            if (e.KeyModifiers.HasFlag(InputModifiers.LeftMouseButton))
+            if (button == 0)
             {
                 TextRange newSelection;
 
@@ -436,27 +447,33 @@ namespace VtNetCore.Avalonia
         protected override void OnPointerPressed(PointerPressedEventArgs e)
         {
             var pointer = e.GetPosition(this);
+            // 获取指针的属性
+            var pointerPoint = e.GetCurrentPoint(this);
             var position = ToPosition(pointer);
 
             var textPosition = position.OffsetBy(0, ViewTop);
 
+            var button = 2;  // Middle button
+
+
             if (!Connected || (Connected && !Terminal.X10SendMouseXYOnButton && !Terminal.X11SendMouseXYOnButton && !Terminal.SgrMouseMode && !Terminal.CellMotionMouseTracking && !Terminal.UseAllMouseTracking))
             {
-                if (e.KeyModifiers.HasFlag(KeyModifiers.LeftMouseButton))
+                if (pointerPoint.Properties.IsLeftButtonPressed)
+                {
                     MousePressedAt = textPosition;
-                else if (e.KeyModifiers.HasFlag(InputModifiers.RightMouseButton))
+                    button = 0;
+                }
+                else if (pointerPoint.Properties.IsRightButtonPressed)
+                {
                     PasteClipboard();
+                    button = 1;
+                }
             }
 
             if (Connected && position.Column >= 0 && position.Row >= 0 && position.Column < Columns && position.Row < Rows)
             {
                 var controlPressed = e.KeyModifiers.HasFlag(KeyModifiers.Control);
                 var shiftPressed = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
-
-                var button =
-                    e.KeyModifiers.HasFlag(InputModifiers.LeftMouseButton) ? 0 :
-                        e.KeyModifiers.HasFlag(InputModifiers.RightMouseButton) ? 1 :
-                            2;  // Middle button
 
                 Terminal.MousePress(position.Column, position.Row, button, controlPressed, shiftPressed);
             }
@@ -465,10 +482,12 @@ namespace VtNetCore.Avalonia
         protected override void OnPointerReleased(PointerReleasedEventArgs e)
         {
             var pointer = e.GetPosition(this);
+            // 获取指针的属性
+            var pointerPoint = e.GetCurrentPoint(this);
             var position = ToPosition(pointer);
             var textPosition = position.OffsetBy(0, ViewTop);
 
-            if (!e.KeyModifiers.HasFlag(Avalonia.Input.InputModifiers.LeftMouseButton))
+            if (e.InitialPressMouseButton == MouseButton.Left)
             {
                 if (Selecting)
                 {

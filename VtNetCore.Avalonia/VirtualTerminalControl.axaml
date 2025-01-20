@@ -1,0 +1,22 @@
+﻿<ResourceDictionary
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vt="VtNetCore">
+    <ControlTheme x:Key="{x:Type vt:VirtualTerminalControl}" TargetType="vt:VirtualTerminalControl">
+
+        <Setter Property="Background" Value="{DynamicResource ThemeControlMidBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ThemeBorderLightBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource ThemeBorderThickness}" />
+        <Setter Property="Foreground" Value="{DynamicResource ThemeForegroundBrush}" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Thin" />
+        <Setter Property="Cursor" Value="IBeam" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel />
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+</ResourceDictionary>
